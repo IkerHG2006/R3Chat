@@ -31,7 +31,7 @@ def broadcast(message, client_socket):
 # Configuración del servidor
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('0.0.0.0', 12345))  # Puerto 12345
+    server.bind(('192.168.1.82', 12345))  # IP local del servidor
     server.listen(5)
     print("Servidor escuchando en el puerto 12345...")
     
