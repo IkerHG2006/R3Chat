@@ -123,7 +123,7 @@ def create_gui(client_socket):
                     "btn_fg": "white",  # Mantener texto de botón blanco
                     "entry_bg": bg,     # El fondo de la entrada será el mismo que el de la ventana
                     "entry_fg": new_fg, # El texto de la entrada será igual que el de la ventana
-                    "title": "Chat Personalizado"
+                    "title": "R3 Chat"
                 }
                 update_theme(window, client_socket, chat_box, entry_field, send_button)
             color_dialog.destroy()
