@@ -3,6 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import scrolledtext, colorchooser
 
+
 # Configuración de colores predeterminados
 class Theme:
     DARK = {
@@ -27,6 +28,7 @@ class Theme:
 
 # Variables globales para almacenar el tema actual
 current_theme = Theme.DARK
+
 
 # Conectar al servidor
 def connect_to_server():
@@ -57,7 +59,7 @@ def on_enter(client_socket, entry_field):
     send_message(client_socket, entry_field)
 
 # Función para crear la interfaz gráfica
-def create_gui(client_socket, username):
+def create_gui(client_socket):
     # Crear ventana principal
     window = tk.Tk()
     window.title(current_theme["title"])
@@ -90,7 +92,7 @@ def create_gui(client_socket, username):
             current_theme = Theme.LIGHT
         else:
             current_theme = Theme.DARK
-        update_theme(window, chat_box, entry_field, send_button, theme_button, customize_button, joke_button)
+        update_theme(window, client_socket, chat_box, entry_field, send_button)
 
     theme_button = tk.Button(window, text="Cambiar Tema", command=toggle_theme,
                              bg=current_theme["btn_bg"], fg=current_theme["btn_fg"], font=("Arial", 12))
@@ -107,13 +109,23 @@ def create_gui(client_socket, username):
             fg = colorchooser.askcolor(title="Elige el color de texto")[1]
             btn_bg = colorchooser.askcolor(title="Elige el color del botón")[1]
 
+            # Si el fondo es oscuro, ponemos el texto blanco, y si es claro, lo ponemos negro
             if bg and fg and btn_bg:
-                current_theme["bg"] = bg
-                current_theme["fg"] = fg
-                current_theme["btn_bg"] = btn_bg
-                current_theme["entry_bg"] = bg
-                current_theme["entry_fg"] = fg
-                update_theme(window, chat_box, entry_field, send_button, theme_button, customize_button, joke_button)
+                if is_dark_color(bg):
+                    new_fg = "white"
+                else:
+                    new_fg = "black"
+                
+                current_theme = {
+                    "bg": bg,
+                    "fg": new_fg,  # Ajustar el color del texto para que siempre sea visible
+                    "btn_bg": btn_bg,
+                    "btn_fg": "white",  # Mantener texto de botón blanco
+                    "entry_bg": bg,     # El fondo de la entrada será el mismo que el de la ventana
+                    "entry_fg": new_fg, # El texto de la entrada será igual que el de la ventana
+                    "title": "R3 Chat"
+                }
+                update_theme(window, client_socket, chat_box, entry_field, send_button)
             color_dialog.destroy()
 
         apply_button = tk.Button(color_dialog, text="Aplicar Colores", command=set_custom_colors,
@@ -124,51 +136,38 @@ def create_gui(client_socket, username):
                                  bg=current_theme["btn_bg"], fg=current_theme["btn_fg"], font=("Arial", 12))
     customize_button.grid(row=4, column=0, pady=10)
 
-    # Botón exclusivo para Iker
-    if username.lower() == "iker":
-        def make_joke():
-            joke_message = "Fuck off niggas"
-            client_socket.send(joke_message.encode('utf-8'))
-        
-        joke_button = tk.Button(window, text="Hacer Broma", command=make_joke,
-                                bg="orange", fg="black", font=("Arial", 12))
-        joke_button.grid(row=5, column=0, pady=10)
-    else:
-        joke_button = None
-
     # Iniciar hilo para recibir mensajes
     threading.Thread(target=receive_messages, args=(client_socket, chat_box), daemon=True).start()
 
     # Ejecutar la interfaz gráfica
     window.mainloop()
 
+# Función para verificar si un color es oscuro
+def is_dark_color(color):
+    r, g, b = [int(color[i:i+2], 16) for i in (1, 3, 5)]  # Convertir el color hexadecimal a RGB
+    brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b  # Fórmula de brillo
+    return brightness < 128  # Si el brillo es bajo, el color es oscuro
+
 # Función para actualizar la interfaz gráfica con el nuevo tema
-def update_theme(window, chat_box, entry_field, send_button, theme_button, customize_button, joke_button):
+def update_theme(window, client_socket, chat_box, entry_field, send_button):
     window.configure(bg=current_theme["bg"])
     chat_box.configure(bg=current_theme["bg"], fg=current_theme["fg"])
     entry_field.configure(bg=current_theme["entry_bg"], fg=current_theme["entry_fg"])
     send_button.configure(bg=current_theme["btn_bg"], fg=current_theme["btn_fg"])
-    theme_button.configure(bg=current_theme["btn_bg"], fg=current_theme["btn_fg"])
-    customize_button.configure(bg=current_theme["btn_bg"], fg=current_theme["btn_fg"])
-    if joke_button:
-        joke_button.configure(bg=current_theme["btn_bg"], fg=current_theme["btn_fg"])
+    window.title(current_theme["title"])
 
 def start_client():
     # Conectar al servidor
     client_socket = connect_to_server()
     
     # Pedir el nombre al usuario
-    while True:
-        name = input("Introduce tu nombre para unirte al chat: ")
-        client_socket.send(name.encode('utf-8'))
-        response = client_socket.recv(1024).decode('utf-8')
-        if response == "Nombre aceptado":
-            break
-        else:
-            print("Ese nombre ya está en uso. Elige otro.")
-
+    name = input("Introduce tu nombre para unirte al chat: ")
+    
+    # Enviar nombre al servidor
+    client_socket.send(name.encode('utf-8'))
+    
     # Crear la interfaz gráfica
-    create_gui(client_socket, name)
+    create_gui(client_socket)
 
 if __name__ == "__main__":
     start_client()
