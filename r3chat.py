@@ -12,9 +12,9 @@ role = "Usuario"
 def display_message(message, is_sent=True):
     chat_area.config(state=tk.NORMAL)
     if is_sent:
-        chat_area.insert(tk.END, f"Tú: {message}\n", "sent")
+        chat_area.insert(tk.END, f"{device_name}: {message}\n", "sent")
     else:
-        chat_area.insert(tk.END, f"Usuario: {message}\n", "received")
+        chat_area.insert(tk.END, f"{device_name}: {message}\n", "received")
     chat_area.yview(tk.END)
     chat_area.config(state=tk.DISABLED)
 
@@ -35,10 +35,14 @@ def receive_messages():
 def send_message(event=None):
     message = message_input.get()
     if message.strip():
-        if message.startswith("/clear"):
+        if message.startswith("/clear") and role == "Admin":
             chat_area.config(state=tk.NORMAL)
             chat_area.delete(1.0, tk.END)
             chat_area.config(state=tk.DISABLED)
+            client_socket.send("/clear".encode())
+        elif message.startswith("/kick") and role == "Admin":
+            username = message.split(" ", 1)[1]
+            client_socket.send(f"/kick {username}".encode())
         else:
             display_message(message, is_sent=True)
             client_socket.send(message.encode())
@@ -48,7 +52,7 @@ def toggle_role():
     global role
     if role == "Usuario" and client_socket.getpeername()[0] == ROLE_ADMIN_IP:
         role = "Admin"
-        role_label.config(text=f"Rol: {role}")
+        role_label.config(text=f"Rol: {role} (Admin)")
     else:
         messagebox.showerror("Error", "Solo el servidor puede ser administrador")
 
