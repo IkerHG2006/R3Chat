@@ -1,61 +1,43 @@
 import socket
 import threading
-import tkinter as tk
-from tkinter import simpledialog
+import sys
+import os
 
-# Configuración del cliente
-SERVER = '192.168.1.82'  # Dirección IP del servidor
-PORT = 12345
-
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-# Conectar al servidor
-def connect_to_server():
-    client.connect((SERVER, PORT))
-    username = simpledialog.askstring("Nombre", "Ingresa tu nombre:")
-    client.send(username.encode())
-
-# Recibir mensajes del servidor
-def receive_messages():
+# Función para recibir mensajes del servidor
+def receive_messages(client_socket):
     while True:
         try:
-            message = client.recv(1024).decode('utf-8')
-            chat_box.insert(tk.END, message + "\n")
+            message = client_socket.recv(1024).decode('utf-8')
+            if message:
+                print(f"\033[1;37;40m{message}\033[0m")  # Mostrar mensaje con estilo oscuro
+            else:
+                break
         except:
             break
 
-# Enviar mensaje al servidor
-def send_message(event=None):
-    message = message_entry.get()
-    if message:
-        client.send(message.encode())
-        message_entry.delete(0, tk.END)
+# Función para limpiar la terminal (más limpia visualmente)
+def clear():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
-# Crear la interfaz de usuario
-def create_gui():
-    global chat_box, message_entry
-    
-    window = tk.Tk()
-    window.title("Chat R3Chat")
-
-    chat_box = tk.Text(window, height=20, width=50, state=tk.DISABLED)
-    chat_box.pack()
-
-    message_entry = tk.Entry(window, width=50)
-    message_entry.bind("<Return>", send_message)
-    message_entry.pack()
-
-    send_button = tk.Button(window, text="Enviar", command=send_message)
-    send_button.pack()
-
-    window.protocol("WM_DELETE_WINDOW", window.quit)
-    window.mainloop()
-
-# Iniciar la conexión y la interfaz gráfica
+# Configuración del cliente
 def start_client():
-    connect_to_server()
-    threading.Thread(target=receive_messages, daemon=True).start()
-    create_gui()
+    clear()
+    name = input("Introduce tu nombre para unirte al chat: ")  # Pide el nombre del usuario
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(('localhost', 12345))  # Conectar al servidor
+    
+    client.send(name.encode('utf-8'))  # Enviar el nombre al servidor
 
-if __name__ == '__main__':
+    # Iniciar hilo para recibir mensajes
+    threading.Thread(target=receive_messages, args=(client,)).start()
+
+    print(f"\033[1;37;40m¡Bienvenido al chat, {name}!\033[0m")
+    print("\033[1;37;40mEscribe tu mensaje y presiona Enter para enviarlo.\033[0m")
+
+    while True:
+        message = input()  # Leer mensaje
+        if message:
+            client.send(message.encode('utf-8'))  # Enviar mensaje al servidor
+
+if __name__ == "__main__":
     start_client()
