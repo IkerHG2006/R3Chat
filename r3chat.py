@@ -1,9 +1,10 @@
 import socket
 import threading
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext, colorchooser
 
-# Configuración de colores personalizables
+
+# Configuración de colores predeterminados
 class Theme:
     DARK = {
         "bg": "black",           # Fondo oscuro
@@ -25,8 +26,9 @@ class Theme:
         "title": "Chat Claro"
     }
 
-# Selección de tema (puedes cambiar a LIGHT para un tema claro)
-THEME = Theme.DARK
+# Variables globales para almacenar el tema actual
+current_theme = Theme.DARK
+
 
 # Conectar al servidor
 def connect_to_server():
@@ -60,34 +62,86 @@ def on_enter(client_socket, entry_field):
 def create_gui(client_socket):
     # Crear ventana principal
     window = tk.Tk()
-    window.title(THEME["title"])
+    window.title(current_theme["title"])
 
     # Configurar colores de fondo y fuente
-    window.configure(bg=THEME["bg"])
+    window.configure(bg=current_theme["bg"])
 
     # Crear cuadro de texto para mostrar los mensajes
     chat_box = scrolledtext.ScrolledText(window, wrap=tk.WORD, width=50, height=20, 
-                                         bg=THEME["bg"], fg=THEME["fg"], font=("Arial", 12))
+                                         bg=current_theme["bg"], fg=current_theme["fg"], font=("Arial", 12))
     chat_box.grid(row=0, column=0, padx=10, pady=10)
 
     # Crear campo de entrada para escribir mensajes
     entry_field = tk.Entry(window, width=40, font=("Arial", 12), 
-                           bg=THEME["entry_bg"], fg=THEME["entry_fg"])
+                           bg=current_theme["entry_bg"], fg=current_theme["entry_fg"])
     entry_field.grid(row=1, column=0, padx=10, pady=10)
 
     # Crear botón para enviar el mensaje
     send_button = tk.Button(window, text="Enviar", command=lambda: send_message(client_socket, entry_field),
-                            bg=THEME["btn_bg"], fg=THEME["btn_fg"], font=("Arial", 12))
+                            bg=current_theme["btn_bg"], fg=current_theme["btn_fg"], font=("Arial", 12))
     send_button.grid(row=2, column=0, pady=10)
 
     # Configurar el evento de Enter para enviar el mensaje
     entry_field.bind("<Return>", lambda event: on_enter(client_socket, entry_field))
+
+    # Botón para cambiar entre tema claro y oscuro
+    def toggle_theme():
+        global current_theme
+        if current_theme == Theme.DARK:
+            current_theme = Theme.LIGHT
+        else:
+            current_theme = Theme.DARK
+        update_theme(window, client_socket, chat_box, entry_field, send_button)
+
+    theme_button = tk.Button(window, text="Cambiar Tema", command=toggle_theme,
+                             bg=current_theme["btn_bg"], fg=current_theme["btn_fg"], font=("Arial", 12))
+    theme_button.grid(row=3, column=0, pady=10)
+
+    # Botón para personalizar los colores
+    def customize_colors():
+        color_dialog = tk.Toplevel(window)
+        color_dialog.title("Personalizar Colores")
+
+        def set_custom_colors():
+            global current_theme
+            bg = colorchooser.askcolor(title="Elige el color de fondo")[1]
+            fg = colorchooser.askcolor(title="Elige el color de texto")[1]
+            btn_bg = colorchooser.askcolor(title="Elige el color del botón")[1]
+
+            current_theme = {
+                "bg": bg,
+                "fg": fg,
+                "btn_bg": btn_bg,
+                "btn_fg": "white",  # Mantener texto de botón blanco
+                "entry_bg": bg,     # El fondo de la entrada será el mismo que el de la ventana
+                "entry_fg": fg,     # El texto de la entrada será igual que el de la ventana
+                "title": "Chat Personalizado"
+            }
+            update_theme(window, client_socket, chat_box, entry_field, send_button)
+            color_dialog.destroy()
+
+        apply_button = tk.Button(color_dialog, text="Aplicar Colores", command=set_custom_colors,
+                                 bg=current_theme["btn_bg"], fg=current_theme["btn_fg"], font=("Arial", 12))
+        apply_button.pack(padx=20, pady=10)
+
+    customize_button = tk.Button(window, text="Personalizar Colores", command=customize_colors,
+                                 bg=current_theme["btn_bg"], fg=current_theme["btn_fg"], font=("Arial", 12))
+    customize_button.grid(row=4, column=0, pady=10)
 
     # Iniciar hilo para recibir mensajes
     threading.Thread(target=receive_messages, args=(client_socket, chat_box), daemon=True).start()
 
     # Ejecutar la interfaz gráfica
     window.mainloop()
+
+# Función para actualizar la interfaz gráfica con el nuevo tema
+def update_theme(window, client_socket, chat_box, entry_field, send_button):
+    window.configure(bg=current_theme["bg"])
+    chat_box.configure(bg=current_theme["bg"], fg=current_theme["fg"])
+    entry_field.configure(bg=current_theme["entry_bg"], fg=current_theme["entry_fg"])
+    send_button.configure(bg=current_theme["btn_bg"], fg=current_theme["btn_fg"])
+    window.title(current_theme["title"])
 
 def start_client():
     # Conectar al servidor
