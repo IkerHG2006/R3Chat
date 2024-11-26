@@ -5,24 +5,40 @@ import threading
 clients = []
 
 # Función para manejar la comunicación con cada cliente
-def handle_client(client_socket):
-    while True:
-        try:
-            # Recibimos el mensaje del cliente
+def handle_client(client_socket, client_address):
+    try:
+        # Pedimos el nombre del cliente
+        client_socket.send("Introduce tu nombre:".encode('utf-8'))
+        name = client_socket.recv(1024).decode('utf-8')
+        
+        # Notificar a todos los clientes sobre la conexión
+        welcome_message = f"{name} se ha unido al chat."
+        broadcast(welcome_message, client_socket)
+
+        print(f"Nuevo usuario conectado: {name} desde {client_address}")
+        
+        # Añadir el cliente a la lista de clientes
+        clients.append((client_socket, name))
+
+        # Continuar recibiendo y enviando mensajes
+        while True:
             message = client_socket.recv(1024).decode('utf-8')
             if message:
-                print(f"Mensaje recibido: {message}")  # Mostrar en consola cuando se recibe un mensaje
-                # Enviamos el mensaje a todos los clientes conectados
-                broadcast(message, client_socket)
-        except Exception as e:
-            print(f"Error: {e}")
-            clients.remove(client_socket)
-            client_socket.close()
-            break
+                # Enviar mensaje a todos los clientes
+                broadcast(f"{name}: {message}", client_socket)
+            else:
+                break
+    except Exception as e:
+        print(f"Error con el cliente {client_address}: {e}")
+    finally:
+        # Eliminar cliente de la lista y cerrar la conexión
+        clients.remove((client_socket, name))
+        client_socket.close()
+        broadcast(f"{name} se ha desconectado.", client_socket)
 
-# Función para enviar un mensaje a todos los clientes
+# Función para enviar un mensaje a todos los clientes conectados
 def broadcast(message, client_socket):
-    for client in clients:
+    for client, _ in clients:
         if client != client_socket:  # No enviarlo al cliente que lo envió
             try:
                 client.send(message.encode('utf-8'))
@@ -30,35 +46,17 @@ def broadcast(message, client_socket):
                 client.close()
                 clients.remove(client)
 
-# Configuración del servidor
+# Función para iniciar el servidor
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    # Establecer el servidor a escuchar en tu IP local (192.168.1.82) y el puerto 12345
-    server.bind(('192.168.1.82', 12345))  # Cambia esto a tu IP local
+    server.bind(('192.168.1.82', 12345))  # Cambia esta IP a la de tu servidor
     server.listen(5)
-    
+
     print("Servidor escuchando en 192.168.1.82:12345...")
 
     while True:
-        client_socket, addr = server.accept()
-        print(f"Conexión establecida desde: {addr}")
-        
-        # Pedimos el nombre del cliente
-        client_socket.send("Introduce tu nombre:".encode('utf-8'))
-        name = client_socket.recv(1024).decode('utf-8')
-
-        # Agregar cliente a la lista
-        clients.append(client_socket)
-        
-        # Notificar a todos los demás clientes de la conexión
-        broadcast(f"{name} se ha unido al chat.", client_socket)
-        
-        # Enviar un mensaje de bienvenida al cliente
-        client_socket.send(f"Bienvenido al chat, {name}!".encode('utf-8'))
-
-        # Iniciar un hilo para manejar al cliente
-        threading.Thread(target=handle_client, args=(client_socket,)).start()
+        client_socket, client_address = server.accept()
+        threading.Thread(target=handle_client, args=(client_socket, client_address)).start()
 
 if __name__ == "__main__":
     start_server()

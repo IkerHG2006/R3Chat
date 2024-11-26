@@ -54,27 +54,28 @@ def start_chat():
 # Ventana de chat
 chat_window = tk.Tk()
 chat_window.title("R3Chat")
-chat_window.geometry("400x500")
-chat_window.withdraw()  # Inicialmente oculta
+chat_window.geometry("500x600")
+chat_window.configure(bg="#2E2E2E")
 
-chat_text = tk.Text(chat_window, state=tk.DISABLED)
+chat_text = tk.Text(chat_window, state=tk.DISABLED, bg="#2E2E2E", fg="white", font=("Arial", 12))
 chat_text.pack(pady=10, padx=10, expand=True, fill=tk.BOTH)
 
-message_entry = tk.Entry(chat_window)
+message_entry = tk.Entry(chat_window, font=("Arial", 14))
 message_entry.pack(pady=10, padx=10, fill=tk.X)
 message_entry.bind("<Return>", send_message)
 
 # Ventana inicial para pedir el nombre
 start_window = tk.Tk()
 start_window.title("Bienvenido a R3Chat")
+start_window.geometry("300x200")
 
-name_label = tk.Label(start_window, text="Introduce tu nombre:")
+name_label = tk.Label(start_window, text="Introduce tu nombre:", font=("Arial", 12))
 name_label.pack(pady=10)
 
-name_entry = tk.Entry(start_window)
+name_entry = tk.Entry(start_window, font=("Arial", 14))
 name_entry.pack(pady=10)
 
-start_button = tk.Button(start_window, text="Comenzar", command=start_chat)
+start_button = tk.Button(start_window, text="Comenzar", font=("Arial", 12), command=start_chat)
 start_button.pack(pady=10)
 
 start_window.mainloop()
