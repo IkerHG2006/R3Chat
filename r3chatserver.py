@@ -11,10 +11,11 @@ def handle_client(client_socket):
             # Recibimos el mensaje del cliente
             message = client_socket.recv(1024).decode('utf-8')
             if message:
+                print(f"Mensaje recibido: {message}")  # Mostrar en consola cuando se recibe un mensaje
                 # Enviamos el mensaje a todos los clientes conectados
                 broadcast(message, client_socket)
-        except:
-            # El cliente se desconectó
+        except Exception as e:
+            print(f"Error: {e}")
             clients.remove(client_socket)
             client_socket.close()
             break
@@ -32,25 +33,31 @@ def broadcast(message, client_socket):
 # Configuración del servidor
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('192.168.1.82', 12345))  # IP local del servidor
-    server.listen(5)
-    print("Servidor escuchando en el puerto 12345...")
     
+    # Establecer el servidor a escuchar en tu IP local (192.168.1.82) y el puerto 12345
+    server.bind(('192.168.1.82', 12345))  # Cambia esto a tu IP local
+    server.listen(5)
+    
+    print("Servidor escuchando en 192.168.1.82:12345...")
+
     while True:
         client_socket, addr = server.accept()
-        print(f"Conexión de {addr}")
+        print(f"Conexión establecida desde: {addr}")
         
         # Pedimos el nombre del cliente
         client_socket.send("Introduce tu nombre:".encode('utf-8'))
         name = client_socket.recv(1024).decode('utf-8')
-        
+
+        # Agregar cliente a la lista
         clients.append(client_socket)
-        client_socket.send(f"Bienvenido, {name}!".encode('utf-8'))
         
-        # Enviar el nombre de usuario a todos los demás
-        broadcast(f"{name} se ha unido al chat", client_socket)
+        # Notificar a todos los demás clientes de la conexión
+        broadcast(f"{name} se ha unido al chat.", client_socket)
         
-        # Iniciamos un hilo para manejar al cliente
+        # Enviar un mensaje de bienvenida al cliente
+        client_socket.send(f"Bienvenido al chat, {name}!".encode('utf-8'))
+
+        # Iniciar un hilo para manejar al cliente
         threading.Thread(target=handle_client, args=(client_socket,)).start()
 
 if __name__ == "__main__":

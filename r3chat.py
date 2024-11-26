@@ -2,8 +2,8 @@ import tkinter as tk
 import socket
 import threading
 
-# Dirección del servidor
-server_address = ('192.168.1.82', 12345)  # Cambia esta IP a la de tu servidor
+# Dirección del servidor (tu IP local)
+server_address = ('192.168.1.82', 12345)
 
 # Función para recibir mensajes del servidor
 def receive_messages():
