@@ -109,16 +109,23 @@ def create_gui(client_socket):
             fg = colorchooser.askcolor(title="Elige el color de texto")[1]
             btn_bg = colorchooser.askcolor(title="Elige el color del botón")[1]
 
-            current_theme = {
-                "bg": bg,
-                "fg": fg,
-                "btn_bg": btn_bg,
-                "btn_fg": "white",  # Mantener texto de botón blanco
-                "entry_bg": bg,     # El fondo de la entrada será el mismo que el de la ventana
-                "entry_fg": fg,     # El texto de la entrada será igual que el de la ventana
-                "title": "Chat Personalizado"
-            }
-            update_theme(window, client_socket, chat_box, entry_field, send_button)
+            # Si el fondo es oscuro, ponemos el texto blanco, y si es claro, lo ponemos negro
+            if bg and fg and btn_bg:
+                if is_dark_color(bg):
+                    new_fg = "white"
+                else:
+                    new_fg = "black"
+                
+                current_theme = {
+                    "bg": bg,
+                    "fg": new_fg,  # Ajustar el color del texto para que siempre sea visible
+                    "btn_bg": btn_bg,
+                    "btn_fg": "white",  # Mantener texto de botón blanco
+                    "entry_bg": bg,     # El fondo de la entrada será el mismo que el de la ventana
+                    "entry_fg": new_fg, # El texto de la entrada será igual que el de la ventana
+                    "title": "Chat Personalizado"
+                }
+                update_theme(window, client_socket, chat_box, entry_field, send_button)
             color_dialog.destroy()
 
         apply_button = tk.Button(color_dialog, text="Aplicar Colores", command=set_custom_colors,
@@ -134,6 +141,12 @@ def create_gui(client_socket):
 
     # Ejecutar la interfaz gráfica
     window.mainloop()
+
+# Función para verificar si un color es oscuro
+def is_dark_color(color):
+    r, g, b = [int(color[i:i+2], 16) for i in (1, 3, 5)]  # Convertir el color hexadecimal a RGB
+    brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b  # Fórmula de brillo
+    return brightness < 128  # Si el brillo es bajo, el color es oscuro
 
 # Función para actualizar la interfaz gráfica con el nuevo tema
 def update_theme(window, client_socket, chat_box, entry_field, send_button):
