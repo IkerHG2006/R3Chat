@@ -1,42 +1,53 @@
 import socket
 import threading
 
-HOST = '0.0.0.0'
-PORT = 12345
+# Lista para almacenar los clientes conectados
 clients = []
 
-def broadcast(message, client_name, _client_socket=None):
-    for client, name in clients:
-        if client != _client_socket:
-            try:
-                client.send(f"{name}: {message}".encode())
-            except:
-                clients.remove(client)
-
-def handle_client(client_socket, client_name):
+# Función para manejar la comunicación con cada cliente
+def handle_client(client_socket):
     while True:
         try:
+            # Recibimos el mensaje del cliente
             message = client_socket.recv(1024).decode('utf-8')
             if message:
-                broadcast(message, client_name, client_socket)
-            else:
-                break
+                # Enviamos el mensaje a todos los clientes conectados
+                broadcast(message, client_socket)
         except:
-            clients.remove((client_socket, client_name))
+            clients.remove(client_socket)
+            client_socket.close()
             break
 
+# Función para enviar un mensaje a todos los clientes
+def broadcast(message, client_socket):
+    for client in clients:
+        if client != client_socket:
+            try:
+                client.send(message.encode('utf-8'))
+            except:
+                client.close()
+                clients.remove(client)
+
+# Configuración del servidor
 def start_server():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST, PORT))
-    server_socket.listen(5)
-    print(f"Servidor escuchando en {HOST}:{PORT}")
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(('0.0.0.0', 12345))  # Puerto 12345
+    server.listen(5)
+    print("Servidor escuchando en el puerto 12345...")
     
     while True:
-        client_socket, client_address = server_socket.accept()
-        client_name = client_socket.recv(1024).decode('utf-8')  # Recibir el nombre de usuario
-        print(f"Conexión establecida con {client_address} - Nombre del cliente: {client_name}")
+        client_socket, addr = server.accept()
+        print(f"Conexión de {addr}")
         
-        clients.append((client_socket, client_name))
-        threading.Thread(target=handle_client, args=(client_socket, client_name)).start()
+        # Pedimos el nombre del cliente
+        client_socket.send("Introduce tu nombre:".encode('utf-8'))
+        name = client_socket.recv(1024).decode('utf-8')
+        
+        clients.append(client_socket)
+        client_socket.send(f"Bienvenido, {name}!".encode('utf-8'))
+        
+        # Iniciamos un hilo para manejar al cliente
+        threading.Thread(target=handle_client, args=(client_socket,)).start()
 
-start_server()
+if __name__ == "__main__":
+    start_server()
