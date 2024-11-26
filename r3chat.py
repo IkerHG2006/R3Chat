@@ -14,7 +14,7 @@ def display_message(message, is_sent=True):
     chat_area.config(state=tk.NORMAL)
     
     if is_sent:
-        chat_area.insert(tk.END, f"{username}: {message}\n", "sent")
+        chat_area.insert(tk.END, f"Yo ({username}): {message}\n", "sent")
     else:
         chat_area.insert(tk.END, f"{message}\n", "received")
         
@@ -104,7 +104,7 @@ except Exception as e:
 root = tk.Tk()
 root.title("R3 Chat")
 
-root.geometry("600x500")  # Ajusté la altura de la ventana
+root.geometry("600x500")
 root.configure(bg="#2c3e50")
 
 title_label = tk.Label(root, text="R3 Chat", font=("Helvetica", 20, "bold"), bg="#2c3e50", fg="#ecf0f1")
@@ -138,5 +138,3 @@ if connected:
 toggle_input()
 
 root.mainloop()
-
-# Coded by R3-K1

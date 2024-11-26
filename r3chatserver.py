@@ -33,12 +33,10 @@ def start_server():
     
     while True:
         client_socket, client_address = server_socket.accept()
-        device_name = f"{client_address[0]}-{client_address[1]}"  # Nombre único del dispositivo basado en IP y puerto
-        print(f"Conexión establecida con {client_address} - Nombre del cliente: {device_name}")
+        client_name = f"Equipo-{client_address[1]}"  # Asignar el nombre del equipo basado en el puerto del cliente
+        print(f"Conexión establecida con {client_address} - Nombre del cliente: {client_name}")
         
-        clients.append((client_socket, device_name))
-        threading.Thread(target=handle_client, args=(client_socket, device_name)).start()
+        clients.append((client_socket, client_name))
+        threading.Thread(target=handle_client, args=(client_socket, client_name)).start()
 
 start_server()
-
-# Coded by R3-K1
