@@ -7,14 +7,16 @@ HOST = '192.168.1.82'
 PORT = 12345
 
 role = "Usuario"
+device_name = socket.gethostname()
+username = device_name[-3:]  # Obtener los últimos 3 dígitos del nombre del dispositivo
 
 def display_message(message, is_sent=True):
     chat_area.config(state=tk.NORMAL)
     
     if is_sent:
-        chat_area.insert(tk.END, f"{device_name}: {message}\n", "sent")
+        chat_area.insert(tk.END, f"{username}: {message}\n", "sent")
     else:
-        chat_area.insert(tk.END, f"Otro: {message}\n", "received")
+        chat_area.insert(tk.END, f"{message}\n", "received")
         
     chat_area.yview(tk.END)
     chat_area.config(state=tk.DISABLED)
@@ -29,11 +31,13 @@ def receive_messages():
             else:
                 connected = False
                 status_label.config(text="Desconectado", bg="#e74c3c", fg="#ffffff")
+                toggle_input()
                 break
         except:
             messagebox.showerror("Error", "Conexión perdida con el servidor.")
             connected = False
             status_label.config(text="Desconectado", bg="#e74c3c", fg="#ffffff")
+            toggle_input()
             break
 
 def send_message(event=None):
@@ -49,9 +53,12 @@ def send_message(event=None):
         messagebox.showwarning("Advertencia", "No estás conectado al servidor.")
 
 def reconnect():
+    global connected
     try:
         client_socket.connect((HOST, PORT))
+        connected = True
         status_label.config(text="Conectado", bg="#27ae60", fg="#ffffff")
+        toggle_input()
         threading.Thread(target=receive_messages, daemon=True).start()
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo reconectar: {e}")
@@ -70,6 +77,8 @@ def disconnect():
         client_socket.close()
         connected = False
         status_label.config(text="Desconectado", bg="#e74c3c", fg="#ffffff")
+        toggle_input()
+        disconnect_button.config(text="Conectar", command=reconnect)
         messagebox.showinfo("Desconectado", "Te has desconectado correctamente.")
     except:
         messagebox.showerror("Error", "Hubo un problema al desconectarte.")
@@ -95,9 +104,7 @@ except Exception as e:
 root = tk.Tk()
 root.title("R3 Chat")
 
-device_name = socket.gethostname()
-
-root.geometry("600x450")
+root.geometry("600x500")  # Ajusté la altura de la ventana
 root.configure(bg="#2c3e50")
 
 title_label = tk.Label(root, text="R3 Chat", font=("Helvetica", 20, "bold"), bg="#2c3e50", fg="#ecf0f1")

@@ -5,23 +5,24 @@ HOST = '0.0.0.0'
 PORT = 12345
 clients = []
 
-def broadcast(message, _client_socket=None):
-    for client in clients:
+def broadcast(message, client_name, _client_socket=None):
+    for client, name in clients:
         if client != _client_socket:
             try:
-                client.send(message)
+                client.send(f"{name}: {message}".encode())
             except:
                 clients.remove(client)
 
-def handle_client(client_socket):
+def handle_client(client_socket, client_name):
     while True:
         try:
-            message = client_socket.recv(1024)
-            if not message:
+            message = client_socket.recv(1024).decode('utf-8')
+            if message:
+                broadcast(message, client_name, client_socket)
+            else:
                 break
-            broadcast(message, client_socket)
         except:
-            clients.remove(client_socket)
+            clients.remove((client_socket, client_name))
             break
 
 def start_server():
@@ -32,9 +33,11 @@ def start_server():
     
     while True:
         client_socket, client_address = server_socket.accept()
-        print(f"Conexión establecida con {client_address}")
-        clients.append(client_socket)
-        threading.Thread(target=handle_client, args=(client_socket,)).start()
+        device_name = f"{client_address[0]}-{client_address[1]}"  # Nombre único del dispositivo basado en IP y puerto
+        print(f"Conexión establecida con {client_address} - Nombre del cliente: {device_name}")
+        
+        clients.append((client_socket, device_name))
+        threading.Thread(target=handle_client, args=(client_socket, device_name)).start()
 
 start_server()
 
