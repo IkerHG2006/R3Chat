@@ -1,10 +1,11 @@
 import socket
 import threading
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, simpledialog
+from tkinter import scrolledtext, messagebox
 
 HOST = '192.168.1.82'
 PORT = 12345
+ROLE_ADMIN_IP = '192.168.1.82'
 
 role = "Usuario"
 
@@ -13,7 +14,7 @@ def display_message(message, is_sent=True):
     if is_sent:
         chat_area.insert(tk.END, f"Tú: {message}\n", "sent")
     else:
-        chat_area.insert(tk.END, f"{device_name} ({custom_name}): {message}\n", "received")
+        chat_area.insert(tk.END, f"Usuario: {message}\n", "received")
     chat_area.yview(tk.END)
     chat_area.config(state=tk.DISABLED)
 
@@ -24,8 +25,6 @@ def receive_messages():
             message = client_socket.recv(1024).decode('utf-8')
             if message:
                 display_message(message, is_sent=False)
-                if message != "clear" and message != "nick":
-                    show_notification(message)
             else:
                 connected = False
                 break
@@ -40,27 +39,26 @@ def send_message(event=None):
             chat_area.config(state=tk.NORMAL)
             chat_area.delete(1.0, tk.END)
             chat_area.config(state=tk.DISABLED)
-        elif message.startswith("/nick"):
-            new_name = message.split(" ", 1)[1]
-            custom_name_label.config(text=new_name)
-            custom_name = new_name
         else:
             display_message(message, is_sent=True)
             client_socket.send(message.encode())
         message_input.delete(0, tk.END)
 
-def show_notification(message):
-    messagebox.showinfo("Nuevo mensaje", f"Nuevo mensaje de {device_name} ({custom_name}):\n{message}")
-
 def toggle_role():
     global role
-    role = "Admin" if role == "Usuario" else "Usuario"
-    role_label.config(text=f"Rol: {role}")
+    if role == "Usuario" and client_socket.getpeername()[0] == ROLE_ADMIN_IP:
+        role = "Admin"
+        role_label.config(text=f"Rol: {role}")
+    else:
+        messagebox.showerror("Error", "Solo el servidor puede ser administrador")
 
 try:
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((HOST, PORT))
     connected = True
+
+    if client_socket.getpeername()[0] == ROLE_ADMIN_IP:
+        role = "Admin"
 except Exception as e:
     messagebox.showerror("Error", f"No se pudo conectar al servidor: {e}")
     exit()
@@ -69,7 +67,6 @@ root = tk.Tk()
 root.title("R3 Chat")
 
 device_name = socket.gethostname()
-custom_name = simpledialog.askstring("Nombre Personalizado", "Introduce tu nombre (opcional):") or "Anon"
 
 root.geometry("500x400")
 root.configure(bg="#2c3e50")
@@ -95,11 +92,10 @@ role_button.pack(side=tk.LEFT, pady=(0, 10))
 role_label = tk.Label(frame, text=f"Rol: {role}", bg="#34495e", fg="#ecf0f1", font=("Helvetica", 10))
 role_label.pack(side=tk.LEFT, padx=(10, 0))
 
-custom_name_label = tk.Label(frame, text=custom_name, bg="#34495e", fg="#ecf0f1", font=("Helvetica", 10))
-custom_name_label.pack(side=tk.LEFT, padx=(10, 0))
-
 message_input.bind('<Return>', send_message)
 
 threading.Thread(target=receive_messages, daemon=True).start()
 
 root.mainloop()
+
+# Coded by R3-K1
