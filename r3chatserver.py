@@ -33,7 +33,7 @@ def start_server():
     
     while True:
         client_socket, client_address = server_socket.accept()
-        client_name = f"Equipo-{client_address[1]}"  # Asignar el nombre del equipo basado en el puerto del cliente
+        client_name = client_socket.recv(1024).decode('utf-8')  # Recibir el nombre de usuario
         print(f"Conexión establecida con {client_address} - Nombre del cliente: {client_name}")
         
         clients.append((client_socket, client_name))
