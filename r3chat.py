@@ -30,7 +30,8 @@ def ask_username():
 
 # Inicialización de la conexión al servidor
 def connect_to_server():
-    global connected
+    global connected, client_socket, status_label, message_input, send_button
+
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((HOST, PORT))
@@ -42,7 +43,7 @@ def connect_to_server():
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo conectar al servidor: {e}")
         connected = False
-        status_label_text = "Desconectado"
+        status_label.config(text="Desconectado", bg="#e74c3c", fg="#ffffff")
 
 # Mostrar el mensaje en el chat
 def display_message(message, is_sent=True):
@@ -125,6 +126,7 @@ def disconnect():
         
 # Habilitar/deshabilitar la entrada de mensajes
 def toggle_input():
+    global message_input, send_button
     if connected:
         message_input.config(state=tk.NORMAL)
         send_button.config(state=tk.NORMAL)
@@ -134,7 +136,7 @@ def toggle_input():
 
 # Función principal para ejecutar el cliente
 def main():
-    global client_socket, connected, username, status_label, status_label_text
+    global client_socket, connected, username, status_label, status_label_text, chat_area, message_input, send_button, disconnect_button
 
     ask_username()  # Pedir el nombre del usuario al inicio
 
