@@ -24,7 +24,7 @@ def start_client():
     clear()
     name = input("Introduce tu nombre para unirte al chat: ")  # Pide el nombre del usuario
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(('192.168.1.100', 12345))  # Usa la IP real del servidor
+    client.connect(('192.168.1.82', 12345))  # Usa la IP real del servidor
     
     client.send(name.encode('utf-8'))  # Enviar el nombre al servidor
 
