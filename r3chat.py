@@ -1,235 +1,234 @@
 import socket
 import threading
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, colorchooser
+from tkinter import scrolledtext, colorchooser, filedialog, simpledialog
+from tkinter import messagebox
+from time import sleep, time
+import os
+import random
 
-# Configuración de colores predeterminados
+# Tema de colores
 class Theme:
-    DARK = {
-        "bg": "black",
-        "fg": "white",
-        "btn_bg": "#4CAF50",
-        "btn_fg": "white",
-        "entry_bg": "#2a2a2a",
-        "entry_fg": "white",
-        "title": "R3 Chat - Tema Oscuro"
-    }
     LIGHT = {
-        "bg": "white",
-        "fg": "black",
-        "btn_bg": "#008CBA",
-        "btn_fg": "white",
-        "entry_bg": "#f1f1f1",
-        "entry_fg": "black",
-        "title": "R3 Chat - Tema Claro"
+        "bg": "#f5f5f5",         # Fondo claro
+        "fg": "#333333",         # Texto oscuro
+        "btn_bg": "#4CAF50",     # Botón verde
+        "btn_fg": "white",       # Texto blanco en botones
+        "entry_bg": "#ffffff",   # Fondo de entrada blanco
+        "entry_fg": "#333333",   # Texto oscuro en entradas
+        "title": "Chat Moderno"
+    }
+    
+    DARK = {
+        "bg": "#2c3e50",         # Fondo oscuro
+        "fg": "#ecf0f1",         # Texto claro
+        "btn_bg": "#3498db",     # Botón azul
+        "btn_fg": "white",       # Texto blanco en botones
+        "entry_bg": "#34495e",   # Fondo de entrada oscuro
+        "entry_fg": "#ecf0f1",   # Texto claro en entradas
+        "title": "Chat Oscuro Moderno"
     }
 
-# Variables globales
-current_theme = Theme.DARK
-username = None  # Para almacenar el nombre del usuario
+class ChatClient:
+    def __init__(self, server_ip, server_port):
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.client_socket = None
+        self.name = ""
+        self.current_theme = Theme.LIGHT
+        self.chat_history = []
+        self.is_dnd = False  # Variable para Modo No Molestar
 
+        self.window = tk.Tk()
+        self.chat_box = None
+        self.entry_field = None
+        self.send_button = None
+        self.status_label = None
+        self.notification_flag = False
+        self.volume = 1  # Volumen de notificaciones
 
-# Conexión al servidor
-def connect_to_server():
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(('192.168.1.82', 12345))  # Cambiar IP al servidor real
-    return client_socket
-
-
-# Obtener lista de usuarios activos del servidor
-def fetch_users(client_socket):
-    try:
-        client_socket.send("/users".encode('utf-8'))  # Solicita usuarios al servidor
-        users = client_socket.recv(1024).decode('utf-8').split(",")
-        return [user for user in users if user and user != username]  # Excluir el propio usuario
-    except:
-        return []
-
-
-# Ventana principal con selección de chats
-def main_window(client_socket):
-    window = tk.Tk()
-    window.title(current_theme["title"])
-    window.geometry("400x300")
-    window.configure(bg=current_theme["bg"])
-
-    # Etiqueta de bienvenida
-    welcome_label = tk.Label(
-        window,
-        text=f"Bienvenido a R3Chat, {username}",
-        bg=current_theme["bg"],
-        fg=current_theme["fg"],
-        font=("Arial", 16),
-    )
-    welcome_label.pack(pady=20)
-
-    # Botón para entrar al chat general
-    def join_general_chat():
-        window.destroy()
-        create_chat_window(client_socket, "General", width=600, height=500)
-
-    general_button = tk.Button(
-        window,
-        text="Chat General",
-        command=join_general_chat,
-        bg=current_theme["btn_bg"],
-        fg=current_theme["btn_fg"],
-        font=("Arial", 12),
-    )
-    general_button.pack(pady=10)
-
-    # Botón para abrir lista de usuarios conectados y elegir chat privado
-    def open_private_chat():
-        users = fetch_users(client_socket)
-
-        if not users:  # Si no hay usuarios activos
-            messagebox.showinfo("Usuarios", "No hay usuarios conectados en este momento.")
-            return
-
-        # Crear ventana para seleccionar usuario
-        chat_selection_window = tk.Toplevel(window)
-        chat_selection_window.title("Usuarios Conectados")
-        chat_selection_window.configure(bg=current_theme["bg"])
-
-        # Lista de usuarios
-        user_listbox = tk.Listbox(
-            chat_selection_window,
-            bg=current_theme["entry_bg"],
-            fg=current_theme["entry_fg"],
-        )
-        for user in users:
-            user_listbox.insert(tk.END, user)
-        user_listbox.pack(padx=10, pady=10)
-
-        # Botón para iniciar el chat privado
-        def start_private_chat():
-            selected_user = user_listbox.get(tk.ACTIVE)
-            if selected_user:
-                chat_selection_window.destroy()
-                create_chat_window(client_socket, selected_user, is_private=True, width=700, height=600)
-
-        private_chat_button = tk.Button(
-            chat_selection_window,
-            text="Abrir Chat Privado",
-            command=start_private_chat,
-            bg=current_theme["btn_bg"],
-            fg=current_theme["btn_fg"],
-        )
-        private_chat_button.pack(pady=5)
-
-    private_button = tk.Button(
-        window,
-        text="Chat Privado",
-        command=open_private_chat,
-        bg=current_theme["btn_bg"],
-        fg=current_theme["btn_fg"],
-        font=("Arial", 12),
-    )
-    private_button.pack(pady=10)
-
-    # Botón para cambiar entre tema claro y oscuro
-    def toggle_theme():
-        global current_theme
-        current_theme = Theme.LIGHT if current_theme == Theme.DARK else Theme.DARK
-        update_theme(window)
-
-    theme_button = tk.Button(
-        window,
-        text="Cambiar Tema",
-        command=toggle_theme,
-        bg=current_theme["btn_bg"],
-        fg=current_theme["btn_fg"],
-        font=("Arial", 12),
-    )
-    theme_button.pack(pady=10)
-
-    # Ejecutar ventana principal
-    window.mainloop()
-
-
-# Crear ventana de chat
-def create_chat_window(client_socket, chat_name, is_private=False, width=600, height=500):
-    window = tk.Tk()
-    window.title(f"R3Chat - {chat_name}")
-    window.geometry(f"{width}x{height}")
-    window.configure(bg=current_theme["bg"])
-
-    # Crear cuadro de texto para mostrar mensajes
-    chat_box = scrolledtext.ScrolledText(
-        window,
-        wrap=tk.WORD,
-        width=70,
-        height=25,
-        bg=current_theme["bg"],
-        fg=current_theme["fg"],
-        font=("Arial", 12),
-    )
-    chat_box.grid(row=0, column=0, padx=10, pady=10)
-
-    # Crear campo de entrada para escribir mensajes
-    entry_field = tk.Entry(
-        window,
-        width=50,
-        font=("Arial", 12),
-        bg=current_theme["entry_bg"],
-        fg=current_theme["entry_fg"],
-    )
-    entry_field.grid(row=1, column=0, padx=10, pady=10)
-
-    # Función para enviar mensaje
-    def send_message():
-        message = entry_field.get()
-        if message:
-            chat_type = "/private" if is_private else "/general"
-            client_socket.send(f"{chat_type}:{chat_name}:{message}".encode('utf-8'))
-            entry_field.delete(0, tk.END)
-
-    send_button = tk.Button(
-        window,
-        text="Enviar",
-        command=send_message,
-        bg=current_theme["btn_bg"],
-        fg=current_theme["btn_fg"],
-        font=("Arial", 12),
-    )
-    send_button.grid(row=2, column=0, pady=10)
-
-    # Función para recibir mensajes
-    def receive_messages():
+    def connect_to_server(self):
+        try:
+            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client_socket.connect((self.server_ip, self.server_port))
+        except Exception as e:
+            print(f"Error al conectar con el servidor: {e}")
+            self.window.quit()
+    
+    def receive_messages(self):
         while True:
             try:
-                message = client_socket.recv(1024).decode('utf-8')
-                chat_box.insert(tk.END, f"{message}\n")
-                chat_box.yview(tk.END)
+                message = self.client_socket.recv(1024).decode('utf-8')
+                if message and not self.is_dnd:
+                    self.chat_history.append(message)
+                    self.chat_box.insert(tk.END, f"{message}\n")
+                    self.chat_box.yview(tk.END)
+                    if not self.notification_flag:
+                        self.status_label.config(text="¡Nuevo mensaje!", fg="red")
+                        self.notification_flag = True
+                        if self.volume > 0:
+                            # Simula un sonido con una pequeña vibración del UI
+                            self.window.bell()
             except:
                 break
 
-    # Iniciar hilo para recibir mensajes
-    threading.Thread(target=receive_messages, daemon=True).start()
+    def send_message(self):
+        message = self.entry_field.get()
+        if message:
+            self.client_socket.send(message.encode('utf-8'))
+            self.chat_history.append(f"{self.name}: {message}")
+            self.entry_field.delete(0, tk.END)
+            self.status_label.config(text="Mensaje enviado", fg="green")
+            self.notification_flag = False
 
-    # Configurar evento Enter para enviar mensaje
-    entry_field.bind("<Return>", lambda _: send_message())
+    def on_enter(self, event=None):
+        self.send_message()
 
-    window.mainloop()
+    def toggle_theme(self):
+        self.current_theme = Theme.DARK if self.current_theme == Theme.LIGHT else Theme.LIGHT
+        self.update_theme()
 
+    def customize_colors(self):
+        color_dialog = tk.Toplevel(self.window)
+        color_dialog.title("Personalizar Colores")
 
-# Actualizar tema en la interfaz
-def update_theme(window):
-    window.configure(bg=current_theme["bg"])
+        def set_custom_colors():
+            bg = colorchooser.askcolor(title="Elige el color de fondo")[1]
+            fg = colorchooser.askcolor(title="Elige el color de texto")[1]
+            btn_bg = colorchooser.askcolor(title="Elige el color del botón")[1]
 
+            if bg and fg and btn_bg:
+                new_fg = "white" if self.is_dark_color(bg) else "black"
+                self.current_theme = {
+                    "bg": bg,
+                    "fg": new_fg,
+                    "btn_bg": btn_bg,
+                    "btn_fg": "white",
+                    "entry_bg": bg,
+                    "entry_fg": new_fg,
+                    "title": "R3 Chat"
+                }
+                self.update_theme()
+            color_dialog.destroy()
 
-# Inicio del cliente
-def start_client():
-    global username
-    client_socket = connect_to_server()
+        apply_button = tk.Button(color_dialog, text="Aplicar Colores", command=set_custom_colors,
+                                 bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"],
+                                 font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                                 activeforeground="white")
+        apply_button.pack(padx=20, pady=10)
 
-    # Solicitar nombre al usuario
-    username = input("Introduce tu nombre para unirte al chat: ")
-    client_socket.send(username.encode('utf-8'))  # Enviar nombre al servidor
+    def is_dark_color(self, color):
+        r, g, b = [int(color[i:i+2], 16) for i in (1, 3, 5)]  
+        brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        return brightness < 128
 
-    # Abrir ventana principal
-    main_window(client_socket)
+    def update_theme(self):
+        self.window.configure(bg=self.current_theme["bg"])
+        self.chat_box.configure(bg=self.current_theme["bg"], fg=self.current_theme["fg"])
+        self.entry_field.configure(bg=self.current_theme["entry_bg"], fg=self.current_theme["entry_fg"])
+        self.send_button.configure(bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"])
+        self.status_label.configure(bg=self.current_theme["bg"], fg=self.current_theme["fg"])
+        self.window.title(self.current_theme["title"])
+
+    def add_emoji(self):
+        emojis = ["😊", "😂", "😎", "😍", "🤔", "🙌", "💥"]
+        emoji = random.choice(emojis)
+        self.entry_field.insert(tk.END, emoji)
+
+    def toggle_dnd(self):
+        self.is_dnd = not self.is_dnd
+        if self.is_dnd:
+            self.status_label.config(text="Modo No Molestar Activado", fg="yellow")
+        else:
+            self.status_label.config(text="Modo No Molestar Desactivado", fg="green")
+
+    def attach_file(self):
+        file_path = filedialog.askopenfilename(title="Selecciona un archivo")
+        if file_path:
+            self.chat_box.insert(tk.END, f"[Archivo adjunto: {os.path.basename(file_path)}]\n")
+            self.chat_box.yview(tk.END)
+
+    def schedule_message(self):
+        time_str = simpledialog.askstring("Programar Mensaje", "Escribe el tiempo en segundos para el mensaje:")
+        if time_str:
+            try:
+                delay = int(time_str)
+                message = simpledialog.askstring("Escribe tu mensaje", "Tu mensaje:")
+                if message:
+                    sleep(delay)
+                    self.client_socket.send(message.encode('utf-8'))
+            except ValueError:
+                messagebox.showerror("Error", "Por favor ingresa un número válido.")
+
+    def create_gui(self):
+        self.window.title(self.current_theme["title"])
+        self.window.configure(bg=self.current_theme["bg"])
+
+        self.chat_box = scrolledtext.ScrolledText(self.window, wrap=tk.WORD, width=60, height=20, 
+                                                  bg=self.current_theme["bg"], fg=self.current_theme["fg"], 
+                                                  font=("Helvetica", 12), bd=0)
+        self.chat_box.grid(row=0, column=0, padx=20, pady=10)
+
+        self.entry_field = tk.Entry(self.window, width=40, font=("Helvetica", 12), 
+                                    bg=self.current_theme["entry_bg"], fg=self.current_theme["entry_fg"], 
+                                    bd=0, relief="flat")
+        self.entry_field.grid(row=1, column=0, padx=20, pady=10)
+        self.entry_field.bind("<Return>", self.on_enter)
+
+        self.send_button = tk.Button(self.window, text="Enviar", command=self.send_message,
+                                     bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"], 
+                                     font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                                     activeforeground="white")
+        self.send_button.grid(row=2, column=0, pady=10)
+
+        self.status_label = tk.Label(self.window, text="", bg=self.current_theme["bg"], fg=self.current_theme["fg"],
+                                     font=("Helvetica", 10))
+        self.status_label.grid(row=3, column=0, pady=10)
+
+        theme_button = tk.Button(self.window, text="Cambiar Tema", command=self.toggle_theme,
+                                 bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"], 
+                                 font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                                 activeforeground="white")
+        theme_button.grid(row=4, column=0, pady=10)
+
+        emoji_button = tk.Button(self.window, text="Añadir Emoji", command=self.add_emoji,
+                                 bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"],
+                                 font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                                 activeforeground="white")
+        emoji_button.grid(row=5, column=0, pady=10)
+
+        dnd_button = tk.Button(self.window, text="Modo No Molestar", command=self.toggle_dnd,
+                               bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"],
+                               font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                               activeforeground="white")
+        dnd_button.grid(row=6, column=0, pady=10)
+
+        file_button = tk.Button(self.window, text="Adjuntar Archivo", command=self.attach_file,
+                                bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"],
+                                font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                                activeforeground="white")
+        file_button.grid(row=7, column=0, pady=10)
+
+        schedule_button = tk.Button(self.window, text="Programar Mensaje", command=self.schedule_message,
+                                    bg=self.current_theme["btn_bg"], fg=self.current_theme["btn_fg"],
+                                    font=("Helvetica", 12), relief="flat", activebackground=self.current_theme["btn_bg"],
+                                    activeforeground="white")
+        schedule_button.grid(row=8, column=0, pady=10)
+
+        threading.Thread(target=self.receive_messages, daemon=True).start()
+
+    def request_name(self):
+        self.name = simpledialog.askstring("Nombre", "Introduce tu nombre:")
+        if self.name:
+            self.client_socket.send(self.name.encode('utf-8'))
+
+    def start_client(self):
+        self.connect_to_server()
+        self.request_name()
+        self.create_gui()
+        self.window.mainloop()
 
 
 if __name__ == "__main__":
-    start_client()
+    client = ChatClient('192.168.1.82', 12345)  # Cambiar la IP a la correcta
+    client.start_client()
