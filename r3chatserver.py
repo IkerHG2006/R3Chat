@@ -1,41 +1,49 @@
 import socket
 import threading
 
-clients = []
+clients = {}
+lock = threading.Lock()
 
-# Función para manejar la recepción de mensajes
 def handle_client(client_socket, client_address):
-    name = client_socket.recv(1024).decode('utf-8')  # Obtener nombre
-    print(f"{name} se ha unido al chat.")
-    
-    clients.append((client_socket, name))
-    
-    # Enviar mensaje de bienvenida
-    client_socket.send(f"¡Bienvenido al chat, {name}!".encode('utf-8'))
-    
+    name = client_socket.recv(1024).decode('utf-8')
+    with lock:
+        clients[client_socket] = name
+    print(f"{name} se ha unido desde {client_address}.")
+
     while True:
         try:
             message = client_socket.recv(1024).decode('utf-8')
-            if message:
-                print(f"{name}: {message}")
-                broadcast(message, name)
+            if message.startswith("/users"):
+                user_list = ",".join([n for s, n in clients.items() if s != client_socket])
+                client_socket.send(user_list.encode('utf-8'))
+            elif ":" in message:
+                target, msg = message.split(":", 1)
+                with lock:
+                    if target in clients.values():
+                        for s, n in clients.items():
+                            if n == target:
+                                s.send(f"(Privado) {clients[client_socket]}: {msg}".encode('utf-8'))
+                                break
+                    else:
+                        broadcast(message, client_socket)
             else:
-                break
+                broadcast(message, client_socket)
         except:
+            with lock:
+                del clients[client_socket]
+            client_socket.close()
             break
-    
-    clients.remove((client_socket, name))
-    client_socket.close()
 
-# Función para enviar mensajes a todos los clientes
-def broadcast(message, name):
-    for client, _ in clients:
-        try:
-            client.send(f"{name}: {message}".encode('utf-8'))
-        except:
-            continue
+def broadcast(message, sender_socket):
+    with lock:
+        for client in clients:
+            if client != sender_socket:
+                try:
+                    client.send(f"{clients[sender_socket]}: {message}".encode('utf-8'))
+                except:
+                    client.close()
+                    del clients[client]
 
-# Configuración del servidor
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('0.0.0.0', 12345))
@@ -44,9 +52,7 @@ def start_server():
 
     while True:
         client_socket, client_address = server.accept()
-        print(f"Conexión de {client_address}")
-        
-        threading.Thread(target=handle_client, args=(client_socket, client_address)).start()
+        threading.Thread(target=handle_client, args=(client_socket, client_address), daemon=True).start()
 
 if __name__ == "__main__":
     start_server()
